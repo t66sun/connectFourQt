@@ -1,0 +1,17 @@
+# build
+build/
+bin/
+*.o
+*.exe
+
+# python
+__pycache__/
+*.pyc
+.venv/
+
+# system
+.DS_Store
+Thumbs.db
+
+# vscode
+.vscode/
