@@ -1,16 +1,6 @@
-# Simple VLC multi-camera controller
+# VLC multi-camera manager
 
-Linux C example: start several independent VLC processes, stop them, and reopen the same devices.
-
-## Build
-
-```sh
-sudo apt install vlc build-essential
-make
-./vlc-camera-demo
-```
-
-## Use
+Simple Linux C functions for running several independent VLC instances with V4L2 cameras.
 
 ```c
 start_vlc(0, "/dev/video0");
@@ -20,8 +10,10 @@ start_vlc(0, "/dev/video0");
 stop_all_vlc();
 ```
 
-Each index from 0 to 7 holds one VLC process. Device arguments are **full Linux device paths** such as `/dev/video0`. The two processes can run concurrently.
+- Index range: 0–7. Each index controls one VLC child process.
+- Device argument: full path such as `/dev/video0`.
+- No initialization needed.
+- Requires VLC on PATH and accessible V4L2 devices.
+- Compile: `make`; run: `./vlc-camera-demo`.
 
-The child runs `vlc --no-one-instance v4l2:///dev/video0 --live-caching=100` (or the corresponding device).
-
-**Notes:** The start function confirms that `fork()` succeeded, but does not confirm that VLC opened the camera or even executed successfully. `stop_vlc()` waits until VLC exits, and can block if VLC hangs. Use this simple version from one thread; do not manually reap its child processes. It does not stop unrelated VLC instances. Verify available devices with `v4l2-ctl --list-devices`.
+This intentionally minimal example uses `fork`, `execlp`, `SIGTERM`, and `waitpid`. It does not verify whether VLC successfully opened the camera; it only reports fork errors immediately. `stop_vlc` waits for VLC to exit and may block if VLC hangs. Intended for single-threaded use; do not concurrently reap these child PIDs elsewhere. The repository is public.
