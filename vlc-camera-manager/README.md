@@ -1,26 +1,27 @@
-# VLC camera launcher (Linux)
+# Simple VLC multi-camera controller
 
-Simple C functions to launch independent VLC processes for V4L2 devices.
+Linux C example: start several independent VLC processes, stop them, and reopen the same devices.
 
 ## Build
 
-Install VLC and a compiler, then:
-
 ```sh
+sudo apt install vlc build-essential
 make
 ./vlc-camera-demo
 ```
 
-## Usage
+## Use
 
 ```c
-pid_t cam0 = start_vlc("/dev/video0");
-pid_t cam1 = start_vlc("/dev/video1");
-if (cam0 > 0) stop_vlc(cam0);
-if (cam1 > 0) stop_vlc(cam1);
-cam0 = start_vlc("/dev/video0"); // restart
+start_vlc(0, "/dev/video0");
+start_vlc(1, "/dev/video1");
+stop_vlc(0);
+start_vlc(0, "/dev/video0");
+stop_all_vlc();
 ```
 
-`start_vlc` accepts a full path in the form `/dev/videoN` and returns the spawned PID or -1 on fork/validation error. `stop_vlc` sends SIGTERM and waits for the child to exit. It must be called from the parent process that started VLC. Never pass -1 or unrelated PIDs.
+Each index from 0 to 7 holds one VLC process. Device arguments are **full Linux device paths** such as `/dev/video0`. The two processes can run concurrently.
 
-**Notes:** Successful fork does not guarantee that VLC executed or that the camera opened. VLC must be on PATH. Stop may block if VLC fails to exit after SIGTERM. This is a deliberately minimal, single-threaded example. The requested 1920x1080 at 30 fps may need changing to match camera capabilities. Run `v4l2-ctl -d /dev/video0 --list-formats-ext` to check. No existing Qt files are used or modified.
+The child runs `vlc --no-one-instance v4l2:///dev/video0 --live-caching=100` (or the corresponding device).
+
+**Notes:** The start function confirms that `fork()` succeeded, but does not confirm that VLC opened the camera or even executed successfully. `stop_vlc()` waits until VLC exits, and can block if VLC hangs. Use this simple version from one thread; do not manually reap its child processes. It does not stop unrelated VLC instances. Verify available devices with `v4l2-ctl --list-devices`.
