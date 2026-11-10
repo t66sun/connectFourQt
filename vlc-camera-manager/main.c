@@ -4,20 +4,17 @@
 
 int main(void)
 {
-    pid_t cam0 = start_vlc("/dev/video0");
-    pid_t cam1 = start_vlc("/dev/video1");
-    if (cam0 < 0) perror("start video0");
-    if (cam1 < 0) perror("start video1");
+    if (start_vlc(0, "/dev/video0") < 0) perror("video0");
+    if (start_vlc(1, "/dev/video1") < 0) perror("video1");
 
     sleep(10);
-    if (cam0 > 0 && stop_vlc(cam0) < 0) perror("stop video0");
-    if (cam1 > 0 && stop_vlc(cam1) < 0) perror("stop video1");
+    stop_all_vlc();
 
-    cam0 = start_vlc("/dev/video0");
-    cam1 = start_vlc("/dev/video1");
+    sleep(2);
+    if (start_vlc(0, "/dev/video0") < 0) perror("restart video0");
+    if (start_vlc(1, "/dev/video1") < 0) perror("restart video1");
+
     sleep(10);
-
-    if (cam0 > 0 && stop_vlc(cam0) < 0) perror("stop video0");
-    if (cam1 > 0 && stop_vlc(cam1) < 0) perror("stop video1");
+    stop_all_vlc();
     return 0;
 }
