@@ -4,21 +4,25 @@
 #include <signal.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
-pid_t start_vlc(const char *device)
+static pid_t vlc_pids[MAX_CAMERAS] = {0};
+
+int start_vlc(int index, const char *device)
 {
-    if (!device || strncmp(device, "/dev/video", 10) != 0 ||
-        device[10] == '\0') {
+    if (index < 0 || index >= MAX_CAMERAS ||
+        !device || strncmp(device, "/dev/video", 10) != 0) {
         errno = EINVAL;
         return -1;
     }
-    for (const char *p = device + 10; *p; ++p) {
-        if (*p < '0' || *p > '9') {
-            errno = EINVAL;
-            return -1;
-        }
+
+    if (vlc_pids[index] > 0) {
+        pid_t result = waitpid(vlc_pids[index], NULL, WNOHANG);
+        if (result == 0) { errno = EALREADY; return -1; }
+        if (result < 0 && errno != ECHILD) return -1;
+        vlc_pids[index] = 0;
     }
 
     char url[256];
@@ -29,29 +33,38 @@ pid_t start_vlc(const char *device)
     }
 
     pid_t pid = fork();
+    if (pid < 0) return -1;
     if (pid == 0) {
         execlp("vlc", "vlc", "--no-one-instance", url,
-               "--v4l2-width=1920", "--v4l2-height=1080",
-               "--v4l2-fps=30", "--live-caching=100",
-               (char *)NULL);
-        perror("execlp vlc");
+               "--live-caching=100", (char *)NULL);
+        perror("vlc");
         _exit(127);
     }
-    return pid;
+    vlc_pids[index] = pid;
+    return 0;
 }
 
-int stop_vlc(pid_t pid)
+int stop_vlc(int index)
 {
-    if (pid <= 0) {
+    if (index < 0 || index >= MAX_CAMERAS) {
         errno = EINVAL;
         return -1;
     }
-    if (kill(pid, SIGTERM) < 0 && errno != ESRCH)
-        return -1;
+    pid_t pid = vlc_pids[index];
+    if (pid <= 0) return 0;
+
+    if (kill(pid, SIGTERM) < 0 && errno != ESRCH) return -1;
     while (waitpid(pid, NULL, 0) < 0) {
         if (errno == EINTR) continue;
-        if (errno == ECHILD) return 0;
-        return -1;
+        if (errno != ECHILD) return -1;
+        break;
     }
+    vlc_pids[index] = 0;
     return 0;
+}
+
+void stop_all_vlc(void)
+{
+    for (int i = 0; i < MAX_CAMERAS; i++)
+        if (stop_vlc(i) < 0) perror("stop_vlc");
 }
