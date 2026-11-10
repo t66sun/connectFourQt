@@ -1,24 +1,23 @@
-#define _POSIX_C_SOURCE 200809L
 #include "vlc_camera.h"
 #include <stdio.h>
 #include <unistd.h>
 
 int main(void)
 {
-    VlcManager manager;
-    vlc_manager_init(&manager);
+    pid_t cam0 = start_vlc("/dev/video0");
+    pid_t cam1 = start_vlc("/dev/video1");
+    if (cam0 < 0) perror("start video0");
+    if (cam1 < 0) perror("start video1");
 
-    if (start_vlc(&manager, 0, "video0") < 0) perror("start video0");
-    if (start_vlc(&manager, 1, "video1") < 0) perror("start video1");
+    sleep(10);
+    if (cam0 > 0 && stop_vlc(cam0) < 0) perror("stop video0");
+    if (cam1 > 0 && stop_vlc(cam1) < 0) perror("stop video1");
+
+    cam0 = start_vlc("/dev/video0");
+    cam1 = start_vlc("/dev/video1");
     sleep(10);
 
-    if (stop_all_vlc(&manager) < 0) perror("stop all");
-    sleep(2);
-
-    if (start_vlc(&manager, 0, "video0") < 0) perror("restart video0");
-    if (start_vlc(&manager, 1, "video1") < 0) perror("restart video1");
-    sleep(10);
-
-    if (stop_all_vlc(&manager) < 0) perror("final stop");
+    if (cam0 > 0 && stop_vlc(cam0) < 0) perror("stop video0");
+    if (cam1 > 0 && stop_vlc(cam1) < 0) perror("stop video1");
     return 0;
 }
